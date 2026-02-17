@@ -13,12 +13,13 @@ from .base import (
     Usage,
 )
 from .clients.anthropic import AnthropicClient, AnthropicConfig
+from .clients.azure_openai import AzureOpenAIClient, AzureOpenAIConfig
 from .clients.gemini import GeminiClient, GeminiConfig
 from .clients.openai import OpenAIClient, OpenAIConfig
 from .config import EXCLUDE_FIELDS, LLM_PROVIDER
 
 ConcreteLLMConfigs = Annotated[
-    AnthropicConfig | GeminiConfig | OpenAIConfig,
+    AnthropicConfig | AzureOpenAIConfig | GeminiConfig | OpenAIConfig,
     Field(discriminator="provider"),
 ]
 ConcreteConfigAdapter: TypeAdapter[ConcreteLLMConfigs] = TypeAdapter(ConcreteLLMConfigs)
@@ -131,6 +132,8 @@ async def generate(
     match config.provider:
         case "anthropic":
             client = AnthropicClient.from_cache(config)
+        case "azure_openai":
+            client = AzureOpenAIClient.from_cache(config)
         case "openai":
             client = OpenAIClient.from_cache(config)
         case "gemini":
@@ -152,5 +155,6 @@ async def generate(
 def clear_client_caches() -> None:
     """Clear the client caches in all client classes. Useful for testing or changing configurations."""
     AnthropicClient._client_cache.clear()
+    AzureOpenAIClient._client_cache.clear()
     OpenAIClient._client_cache.clear()
     GeminiClient._client_cache.clear()
