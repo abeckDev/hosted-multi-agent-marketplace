@@ -46,6 +46,9 @@ export default defineConfig([
   // JS-only override (prevents TS rules from crashing on config files)
   {
     files: ["**/*.js"],
+    languageOptions: {
+      globals: globals.node,
+    },
     rules: {
       "@typescript-eslint/await-thenable": "off",
       "@typescript-eslint/no-floating-promises": "off",
