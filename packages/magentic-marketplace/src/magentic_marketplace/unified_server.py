@@ -18,8 +18,7 @@ from fastapi.staticfiles import StaticFiles
 # Import the existing API app and its routes
 from magentic_marketplace.api import main as orchestrator_api
 
-# Import visualizer utilities - import the module to access its global variable
-from magentic_marketplace import ui as ui_module
+# Import visualizer utilities
 from magentic_marketplace.ui.server import (
     _create_message_threads,
     _load_businesses,
