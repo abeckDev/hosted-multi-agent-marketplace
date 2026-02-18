@@ -55,9 +55,9 @@ class DatabaseService {
     return content;
   }
 
-  async getMarketplaceData(): Promise<
-    Pick<MarketplaceData, "messages" | "messageThreads" | "analytics">
-  > {
+  async getMarketplaceData(
+    schema?: string,
+  ): Promise<Pick<MarketplaceData, "messages" | "messageThreads" | "analytics">> {
     const now = Date.now();
 
     // Return cached data if it's still fresh
@@ -78,7 +78,10 @@ class DatabaseService {
     this.pendingRequest = (async () => {
       try {
         console.log("Fetching marketplace data from server...");
-        const response = await this.fetchWithTimeout(`${API_BASE_URL}/marketplace-data`, 10000);
+        const url = schema
+          ? `${API_BASE_URL}/marketplace-data?schema=${encodeURIComponent(schema)}`
+          : `${API_BASE_URL}/marketplace-data`;
+        const response = await this.fetchWithTimeout(url, 10000);
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -143,9 +146,12 @@ class DatabaseService {
     return this.pendingRequest;
   }
 
-  async getCustomers(): Promise<Customer[]> {
+  async getCustomers(schema?: string): Promise<Customer[]> {
     try {
-      const response = await this.fetchWithTimeout(`${API_BASE_URL}/customers`);
+      const url = schema
+        ? `${API_BASE_URL}/customers?schema=${encodeURIComponent(schema)}`
+        : `${API_BASE_URL}/customers`;
+      const response = await this.fetchWithTimeout(url);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       return await response.json();
     } catch (error) {
@@ -154,9 +160,12 @@ class DatabaseService {
     }
   }
 
-  async getBusinesses(): Promise<Business[]> {
+  async getBusinesses(schema?: string): Promise<Business[]> {
     try {
-      const response = await this.fetchWithTimeout(`${API_BASE_URL}/businesses`);
+      const url = schema
+        ? `${API_BASE_URL}/businesses?schema=${encodeURIComponent(schema)}`
+        : `${API_BASE_URL}/businesses`;
+      const response = await this.fetchWithTimeout(url);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       return await response.json();
     } catch (error) {

@@ -1,5 +1,6 @@
 import { RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import BusinessPanel from "../components/BusinessPanel";
 import CustomerPanel from "../components/CustomerPanel";
@@ -8,6 +9,9 @@ import { databaseService } from "../services/database";
 import { AnalyticsData, Business, Customer, MarketplaceData } from "../types";
 
 function Visualizer() {
+  const [searchParams] = useSearchParams();
+  const schema = searchParams.get("schema");
+
   const [data, setData] = useState<MarketplaceData | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -17,13 +21,19 @@ function Visualizer() {
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
 
   // Load customers and businesses once on initial mount
-  const loadInitialData = async () => {
+  const loadInitialData = useCallback(async () => {
+    if (!schema) {
+      console.log("No schema provided, skipping data load");
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
-      console.log("Loading customers & businesses...");
+      console.log(`Loading customers & businesses for schema: ${schema}...`);
       const [customers, businesses] = await Promise.all([
-        databaseService.getCustomers(),
-        databaseService.getBusinesses(),
+        databaseService.getCustomers(schema),
+        databaseService.getBusinesses(schema),
       ]);
 
       setData({
@@ -41,13 +51,17 @@ function Visualizer() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [schema]);
 
   // Load messages, threads, and analytics (polled frequently)
   const loadMessages = useCallback(async () => {
+    if (!schema) {
+      return;
+    }
+
     setIsLoadingConversations(true);
     try {
-      const marketplaceData = await databaseService.getMarketplaceData();
+      const marketplaceData = await databaseService.getMarketplaceData(schema);
       setData((prev) =>
         prev
           ? {
@@ -68,7 +82,7 @@ function Visualizer() {
     } finally {
       setIsLoadingConversations(false);
     }
-  }, []);
+  }, [schema]);
 
   // Filter message threads based on selected customer and business
   const filteredMessageThreads = useMemo(() => {
@@ -117,7 +131,18 @@ function Visualizer() {
     return () => {
       cleanup.then((cleanupFn) => cleanupFn?.());
     };
-  }, [loadMessages]);
+  }, [loadMessages, loadInitialData]);
+
+  if (!schema) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-brand-50 to-gray-100">
+        <div className="text-center">
+          <h2 className="mb-2 text-2xl font-bold text-gray-800">No Experiment Selected</h2>
+          <p className="text-gray-600">Please select an experiment from the dashboard to view results.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading && !data) {
     return (
