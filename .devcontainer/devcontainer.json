@@ -1,5 +1,6 @@
 {
     "name": "Magentic Marketplace Dev Container",
+    "image": "mcr.microsoft.com/devcontainers/python:3.11",
     "secrets": {
         "LLM_PROVIDER": "LLM_PROVIDER",
         "LLM_MODEL": "LLM_MODEL",
@@ -8,6 +9,12 @@
         "GEMINI_API_KEY": "GEMINI_API_KEY",
         "ANTHROPIC_API_KEY": "ANTHROPIC_API_KEY",
         "HF_TOKEN": "HF_TOKEN"
+    },
+    "features": {
+        "ghcr.io/devcontainers/features/azure-cli:1": {},
+        "ghcr.io/devcontainers/features/docker-in-docker:2": {
+            "moby": false
+        }
     },
     "customizations": {
         "vscode": {
