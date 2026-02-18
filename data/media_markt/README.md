@@ -98,7 +98,7 @@ amenity_features:              # Store amenities
   expert_consultation: boolean # Expert consultation (Smart stores)
   smart_store: boolean         # Smart store concept
   shopping_center: boolean     # Located in shopping center
-progenitor_customer: null      # Not applicable for stores
+progenitor_customer: customer_001      # Not applicable for stores
 min_price_factor: float        # Always 1.0 for stores
 ```
 
