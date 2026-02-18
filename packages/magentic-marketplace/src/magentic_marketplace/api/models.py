@@ -61,9 +61,7 @@ class ExperimentInfo(BaseModel):
     first_activity: datetime | None = Field(
         None, description="First agent registration timestamp"
     )
-    last_activity: datetime | None = Field(
-        None, description="Last activity timestamp"
-    )
+    last_activity: datetime | None = Field(None, description="Last activity timestamp")
     agents_count: int = Field(0, description="Number of agents")
     actions_count: int = Field(0, description="Number of actions")
     logs_count: int = Field(0, description="Number of logs")
@@ -75,10 +73,12 @@ class ExperimentInfo(BaseModel):
 class SettingsResponse(BaseModel):
     """Current system settings and defaults."""
 
-    default_search_algorithm: str = Field("simple", description="Default search algorithm")
-    default_search_bandwidth: int = Field(10, description="Default search bandwidth")
-    default_postgres_host: str = Field("localhost", description="Default PostgreSQL host")
-    default_postgres_port: int = Field(5432, description="Default PostgreSQL port")
-    available_providers: list[str] = Field(
-        ..., description="Available LLM providers"
+    default_search_algorithm: str = Field(
+        "simple", description="Default search algorithm"
     )
+    default_search_bandwidth: int = Field(10, description="Default search bandwidth")
+    default_postgres_host: str = Field(
+        "localhost", description="Default PostgreSQL host"
+    )
+    default_postgres_port: int = Field(5432, description="Default PostgreSQL port")
+    available_providers: list[str] = Field(..., description="Available LLM providers")
