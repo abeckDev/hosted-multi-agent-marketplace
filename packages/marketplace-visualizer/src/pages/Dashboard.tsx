@@ -1,5 +1,6 @@
-import { AlertCircle, Beaker, CheckCircle, Clock, Loader2, Play, XCircle } from "lucide-react";
+import { AlertCircle, Beaker, CheckCircle, Clock, Eye, Loader2, Play, XCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 import {
   DatasetInfo,
@@ -123,6 +124,18 @@ function Dashboard() {
         postgres_port: postgresPort,
         postgres_password: postgresPassword,
       };
+
+      // Save DB config to localStorage for the running experiment page
+      localStorage.setItem(
+        "experimentDbConfig",
+        JSON.stringify({
+          host: postgresHost,
+          port: postgresPort,
+          database: "marketplace",
+          user: "postgres",
+          password: postgresPassword,
+        }),
+      );
 
       const status = await orchestratorService.createExperiment(config);
       setRunningExperiments((prev) => new Map(prev).set(status.name, status));
@@ -364,9 +377,20 @@ function Dashboard() {
                           {getStatusIcon(status.status)}
                           <span className="font-semibold text-gray-800">{name}</span>
                         </div>
-                        <span className="text-xs uppercase tracking-wide text-gray-500">
-                          {status.status}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs uppercase tracking-wide text-gray-500">
+                            {status.status}
+                          </span>
+                          {(status.status === "pending" || status.status === "running") && (
+                            <Link
+                              to={`/dashboard/experiment/${encodeURIComponent(name)}`}
+                              className="flex items-center gap-1 rounded bg-blue-500 px-2 py-1 text-xs font-semibold text-white hover:bg-blue-600"
+                            >
+                              <Eye className="h-3 w-3" />
+                              View Logs
+                            </Link>
+                          )}
+                        </div>
                       </div>
                       <div className="text-xs text-gray-600">
                         {status.started_at && <div>Started: {formatTimestamp(status.started_at)}</div>}
