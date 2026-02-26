@@ -1,5 +1,6 @@
-import { AlertCircle, Beaker, CheckCircle, Clock, Loader2, Play, XCircle } from "lucide-react";
+import { AlertCircle, Beaker, CheckCircle, Clock, Eye, Loader2, Play, XCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 import {
   DatasetInfo,
@@ -10,9 +11,34 @@ import {
 } from "../services/orchestrator";
 
 function Dashboard() {
+  // Helper to load running experiments from localStorage
+  const loadRunningExperimentsFromStorage = (): Map<string, ExperimentStatus> => {
+    try {
+      const stored = localStorage.getItem("runningExperiments");
+      if (stored) {
+        const parsed = JSON.parse(stored) as Array<[string, ExperimentStatus]>;
+        return new Map(parsed);
+      }
+    } catch (e) {
+      console.error("Failed to load running experiments from storage:", e);
+    }
+    return new Map();
+  };
+
+  // Helper to save running experiments to localStorage
+  const saveRunningExperimentsToStorage = (experiments: Map<string, ExperimentStatus>) => {
+    try {
+      localStorage.setItem("runningExperiments", JSON.stringify(Array.from(experiments.entries())));
+    } catch (e) {
+      console.error("Failed to save running experiments to storage:", e);
+    }
+  };
+
   const [datasets, setDatasets] = useState<DatasetInfo[]>([]);
   const [experiments, setExperiments] = useState<ExperimentInfo[]>([]);
-  const [runningExperiments, setRunningExperiments] = useState<Map<string, ExperimentStatus>>(new Map());
+  const [runningExperiments, setRunningExperiments] = useState<Map<string, ExperimentStatus>>(
+    loadRunningExperimentsFromStorage(),
+  );
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +62,26 @@ function Dashboard() {
         password: postgresPassword,
       });
       setExperiments(experimentsData);
+
+      // Check status of each experiment and populate runningExperiments Map
+      const runningStatuses = new Map<string, ExperimentStatus>();
+      for (const exp of experimentsData) {
+        try {
+          const status = await orchestratorService.getExperimentStatus(exp.schema_name);
+          if (status.status === "pending" || status.status === "running") {
+            runningStatuses.set(exp.schema_name, status);
+          }
+        } catch (err) {
+          // Experiment might not have status info, skip it
+          console.debug(`No status for experiment ${exp.schema_name}:`, err);
+        }
+      }
+
+      if (runningStatuses.size > 0) {
+        setRunningExperiments(
+          (prev: Map<string, ExperimentStatus>) => new Map([...prev, ...runningStatuses]),
+        );
+      }
     } catch (err) {
       console.error("Failed to load experiments:", err);
     }
@@ -80,7 +126,16 @@ function Dashboard() {
     }
 
     if (statusUpdates.size > 0) {
-      setRunningExperiments((prev) => new Map([...prev, ...statusUpdates]));
+      setRunningExperiments((prev: Map<string, ExperimentStatus>) => {
+        const updated = new Map([...prev, ...statusUpdates]);
+        // Remove completed or failed experiments from the running experiments map
+        for (const [name, status] of updated.entries()) {
+          if (status.status === "completed" || status.status === "failed") {
+            updated.delete(name);
+          }
+        }
+        return updated;
+      });
 
       // Reload experiments list if any completed
       const hasCompleted = Array.from(statusUpdates.values()).some(
@@ -97,6 +152,16 @@ function Dashboard() {
     loadInitialData();
     loadExperiments();
   }, [loadInitialData, loadExperiments]);
+
+  // Poll running experiments immediately on mount (for experiments loaded from storage)
+  useEffect(() => {
+    pollRunningExperiments();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Save running experiments to localStorage whenever they change
+  useEffect(() => {
+    saveRunningExperimentsToStorage(runningExperiments);
+  }, [runningExperiments]);
 
   // Poll experiment status
   useEffect(() => {
@@ -124,8 +189,22 @@ function Dashboard() {
         postgres_password: postgresPassword,
       };
 
+      // Save DB config to localStorage for the running experiment page
+      localStorage.setItem(
+        "experimentDbConfig",
+        JSON.stringify({
+          host: postgresHost,
+          port: postgresPort,
+          database: "marketplace",
+          user: "postgres",
+          password: postgresPassword,
+        }),
+      );
+
       const status = await orchestratorService.createExperiment(config);
-      setRunningExperiments((prev) => new Map(prev).set(status.name, status));
+      setRunningExperiments((prev: Map<string, ExperimentStatus>) =>
+        new Map(prev).set(status.name, status),
+      );
 
       // Clear form
       setExperimentName("");
@@ -224,7 +303,10 @@ function Dashboard() {
 
               {/* Experiment Name */}
               <div>
-                <label htmlFor="experimentName" className="mb-1 block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="experimentName"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
                   Experiment Name <span className="text-xs text-gray-500">(optional)</span>
                 </label>
                 <input
@@ -256,7 +338,10 @@ function Dashboard() {
 
               {/* Search Bandwidth */}
               <div>
-                <label htmlFor="searchBandwidth" className="mb-1 block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="searchBandwidth"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
                   Search Bandwidth
                 </label>
                 <input
@@ -271,7 +356,10 @@ function Dashboard() {
 
               {/* Customer Max Steps */}
               <div>
-                <label htmlFor="customerMaxSteps" className="mb-1 block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="customerMaxSteps"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
                   Customer Max Steps <span className="text-xs text-gray-500">(optional)</span>
                 </label>
                 <input
@@ -292,7 +380,10 @@ function Dashboard() {
                 <h3 className="text-sm font-semibold text-gray-700">PostgreSQL Settings</h3>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label htmlFor="postgresHost" className="mb-1 block text-xs font-medium text-gray-600">
+                    <label
+                      htmlFor="postgresHost"
+                      className="mb-1 block text-xs font-medium text-gray-600"
+                    >
                       Host
                     </label>
                     <input
@@ -304,7 +395,10 @@ function Dashboard() {
                     />
                   </div>
                   <div>
-                    <label htmlFor="postgresPort" className="mb-1 block text-xs font-medium text-gray-600">
+                    <label
+                      htmlFor="postgresPort"
+                      className="mb-1 block text-xs font-medium text-gray-600"
+                    >
                       Port
                     </label>
                     <input
@@ -317,7 +411,10 @@ function Dashboard() {
                   </div>
                 </div>
                 <div>
-                  <label htmlFor="postgresPassword" className="mb-1 block text-xs font-medium text-gray-600">
+                  <label
+                    htmlFor="postgresPassword"
+                    className="mb-1 block text-xs font-medium text-gray-600"
+                  >
                     Password
                   </label>
                   <input
@@ -364,12 +461,25 @@ function Dashboard() {
                           {getStatusIcon(status.status)}
                           <span className="font-semibold text-gray-800">{name}</span>
                         </div>
-                        <span className="text-xs uppercase tracking-wide text-gray-500">
-                          {status.status}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs uppercase tracking-wide text-gray-500">
+                            {status.status}
+                          </span>
+                          {(status.status === "pending" || status.status === "running") && (
+                            <Link
+                              to={`/dashboard/experiment/${encodeURIComponent(name)}`}
+                              className="flex items-center gap-1 rounded bg-blue-500 px-2 py-1 text-xs font-semibold text-white hover:bg-blue-600"
+                            >
+                              <Eye className="h-3 w-3" />
+                              View Logs
+                            </Link>
+                          )}
+                        </div>
                       </div>
                       <div className="text-xs text-gray-600">
-                        {status.started_at && <div>Started: {formatTimestamp(status.started_at)}</div>}
+                        {status.started_at && (
+                          <div>Started: {formatTimestamp(status.started_at)}</div>
+                        )}
                         {status.completed_at && (
                           <div>Completed: {formatTimestamp(status.completed_at)}</div>
                         )}
